@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حُسبان - تحويل الأوقات والمواقع إلى إحداثيات</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0; font-family: system-ui, "Segoe UI", Tahoma, sans-serif;
+    background: #0b1230; color: #e8ecf8; line-height: 1.7;
+  }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 1.5rem; color: #f2c14e; margin: 0 0 4px; }
+  h2 { font-size: 1.15rem; color: #f2c14e; margin: 28px 0 8px; }
+  p.lead { color: #aab4d4; margin: 0 0 16px; }
+  .card {
+    background: #151d3d; border: 1px solid #2d3a6b; border-radius: 14px;
+    padding: 16px; margin-top: 12px;
+  }
+  form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  form .full { grid-column: 1 / -1; }
+  label { display: block; font-size: .9rem; color: #aab4d4; }
+  input {
+    width: 100%; box-sizing: border-box; margin-top: 4px; padding: 9px 10px;
+    background: #0b1230; color: #e8ecf8; border: 1px solid #2d3a6b; border-radius: 8px;
+    font: inherit; direction: ltr; text-align: left;
+  }
+  button {
+    width: 100%; padding: 11px; margin-top: 4px; border: 0; border-radius: 10px;
+    background: #f2c14e; color: #0b1230; font: inherit; font-weight: 700; cursor: pointer;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  td { padding: 7px 4px; border-bottom: 1px solid #2d3a6b; vertical-align: top; }
+  td.k { color: #aab4d4; width: 45%; }
+  td.v { font-variant-numeric: tabular-nums; direction: ltr; text-align: right; font-weight: 600; }
+  .tag { font-size: .75rem; color: #7fd1a8; direction: ltr; }
+  .warn { color: #f5a97a; font-size: .9rem; margin-top: 8px; }
+  .err { color: #ff8a8a; margin-top: 8px; }
+  footer { margin-top: 32px; color: #6f7aa3; font-size: .85rem; }
+  @media (max-width: 560px) { form { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>حُسبان: الشمس والقبلة والإحداثيات</h1>
+  <p class="lead">أدخل موقعك وتاريخك لحساب الشروق والغروب وزاوية حُسبان وإحداثيات القرص. كل النتائج تحمل وسم <span class="tag">CALCULATED</span> لأنها محسوبة وليست مرصودة.</p>
+
+  <h2>١. الحساب من الموقع</h2>
+  <div class="card">
+    <form id="formSite">
+      <div><label>خط العرض (شمال موجب)<input id="lat" value="36.75" inputmode="decimal"></label></div>
+      <div><label>خط الطول (شرق موجب)<input id="lon" value="3.04" inputmode="decimal"></label></div>
+      <div class="full"><label>التاريخ<input id="date" type="date"></label></div>
+      <div class="full"><button type="submit">احسب</button></div>
+    </form>
+    <div id="siteOut"></div>
+  </div>
+
+  <h2>٢. من أوقات الشروق والغروب إلى الإحداثيات</h2>
+  <div class="card">
+    <p class="lead" style="margin-top:0">أدخل الأوقات بالتوقيت العالمي UTC، بصيغة HH:MM. هذا التقدير يعطي خط الطول من الزوال، وخط العرض من طول النهار مع احتمال الحل الجنوبي.</p>
+    <form id="formTimes">
+      <div class="full"><label>التاريخ<input id="tDate" type="date"></label></div>
+      <div><label>الشروق UTC<input id="tRise" value="06:20" placeholder="06:20"></label></div>
+      <div><label>الغروب UTC<input id="tSet" value="16:42" placeholder="16:42"></label></div>
+      <div class="full"><button type="submit">استخرج الإحداثيات</button></div>
+    </form>
+    <div id="timesOut"></div>
+  </div>
+
+  <footer>
+    الحسابات تقريبية بدقة نحو دقيقتين للزمن، ودقيقة خطأ تعني نحو 25 كم في خط الطول.
+    الاستدلال من الأوقات يعطي تقديراً وليس موقعاً مستقلاً.
+  </footer>
+</main>
+
+<script type="module">
+import { qiblaBearing, hisbanAngle, angleToXY, normalizeDeg } from "./core/hisban-core.js";
+import { sunEvents, longitudeFromSolarNoon, latitudeCandidates } from "./engine/hisban-engine.js";
+
+const $ = (id) => document.getElementById(id);
+const DAY = 86_400_000;
+
+function fmtUtc(ms) {
+  if (ms == null) return "—";
+  return new Date(ms).toISOString().slice(11, 16) + " UTC";
+}
+function fmtLocal(ms) {
+  if (ms == null) return "—";
+  return new Date(ms).toLocaleTimeString("ar-DZ", { timeZone: "Africa/Algiers", hour: "2-digit", minute: "2-digit" });
+}
+function renderRows(rows) {
+  const t = document.createElement("table");
+  for (const [k, v, tag] of rows) {
+    const tr = document.createElement("tr");
+    const tdK = document.createElement("td"); tdK.className = "k"; tdK.textContent = k;
+    const tdV = document.createElement("td"); tdV.className = "v";
+    tdV.textContent = v;
+    if (tag) { const s = document.createElement("span"); s.className = "tag"; s.textContent = " " + tag; tdV.appendChild(s); }
+    tr.append(tdK, tdV); t.appendChild(tr);
+  }
+  return t;
+}
+function showError(el, msg) {
+  el.replaceChildren();
+  const d = document.createElement("div"); d.className = "err"; d.textContent = msg; el.appendChild(d);
+}
+
+function todayIso() {
+  const d = new Date();
+  return d.toISOString().slice(0, 10);
+}
+$("date").value = todayIso();
+$("tDate").value = todayIso();
+
+// ١. الحساب من الموقع
+$("formSite").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const out = $("siteOut");
+  const lat = parseFloat($("lat").value), lon = parseFloat($("lon").value);
+  const dateStr = $("date").value;
+  if (!(lat >= -90 && lat <= 90) || !(lon >= -180 && lon <= 180) || !dateStr) {
+    return showError(out, "تحقق من خط العرض (من -90 إلى 90) وخط الطول (من -180 إلى 180) والتاريخ.");
+  }
+  const dateMs = Date.parse(dateStr + "T12:00:00Z");
+  const now = Date.now();
+  const ev = sunEvents(dateMs, lat, lon);
+  const nowEv = sunEvents(now, lat, lon);
+  // زاوية حُسبان من آخر شروق قبل اللحظة الحالية
+  let sunriseRef = nowEv.sunriseUtc;
+  if (sunriseRef != null && sunriseRef > now) sunriseRef = sunEvents(now - DAY, lat, lon).sunriseUtc;
+  const angle = sunriseRef != null ? hisbanAngle(now, sunriseRef) : null;
+  const qibla = qiblaBearing(lat, lon);
+  const xy = angle != null ? angleToXY(angle, 100, 150, 150) : null;
+
+  const rows = [
+    ["الشروق", ev.polar ? (ev.polar === "day" ? "نهار دائم" : "ليل دائم") : `${fmtUtc(ev.sunriseUtc)} | ${fmtLocal(ev.sunriseUtc)}`, ev.source],
+    ["الغروب", ev.polar ? "—" : `${fmtUtc(ev.sunsetUtc)} | ${fmtLocal(ev.sunsetUtc)}`, ev.source],
+    ["الزوال المحلي", `${fmtUtc(ev.solarNoonUtc)} | ${fmtLocal(ev.solarNoonUtc)}`, ev.source],
+    ["طول النهار", ev.polar ? "—" : `${(ev.dayLengthMin / 60).toFixed(2)} ساعة`, ev.source],
+    ["ميل الشمس", `${ev.declinationDeg.toFixed(3)}°`, ev.source],
+    ["زاوية حُسبان الآن", angle == null ? "—" : `${angle.toFixed(4)}°`, "CALCULATED"],
+    ["إحداثيات على القرص (نصف قطر 100)", xy ? `x=${xy.x.toFixed(2)}  y=${xy.y.toFixed(2)}` : "—", "CALCULATED"],
+    ["سمت القبلة", `${qibla.toFixed(2)}°`, "CALCULATED"],
+  ];
+  out.replaceChildren(renderRows(rows));
+  if (ev.polar) {
+    const w = document.createElement("div"); w.className = "warn";
+    w.textContent = "هذا الموقع في منطقة قطبية في هذا التاريخ، ولا يوجد شروق أو غروب بالمعنى المعتاد.";
+    out.appendChild(w);
+  }
+});
+
+// ٢. من الأوقات إلى الإحداثيات
+const parseUtc = (dateStr, hhmm) => {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+  if (!m || !dateStr) return null;
+  const h = +m[1], mi = +m[2];
+  if (h > 23 || mi > 59) return null;
+  return Date.parse(`${dateStr}T${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}:00Z`);
+};
+
+$("formTimes").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const out = $("timesOut");
+  const dateStr = $("tDate").value;
+  const rise = parseUtc(dateStr, $("tRise").value);
+  let set = parseUtc(dateStr, $("tSet").value);
+  if (rise == null || set == null) {
+    return showError(out, "أدخل التاريخ وأوقات الشروق والغروب بصيغة HH:MM بالتوقيت العالمي.");
+  }
+  if (set <= rise) set += DAY; // الغروب بعد منتصف الليل مثلاً
+  const noon = (rise + set) / 2;
+  const dateMs = Date.parse(dateStr + "T12:00:00Z");
+
+  const lon = longitudeFromSolarNoon(noon, dateMs);
+  const dayMin = (set - rise) / 60000;
+  const cands = latitudeCandidates(dateMs, dayMin);
+
+  const rows = [
+    ["خط الطول المقدر", `${lon.toFixed(3)}°`, "CALCULATED"],
+    ["الزوال المستخدم", fmtUtc(noon), "CALCULATED"],
+    ["طول النهار", `${(dayMin / 60).toFixed(2)} ساعة`, "INPUT"],
+    ["خط العرض المرشح", cands.length ? cands.map((c) => `${c.toFixed(3)}°`).join("  أو  ") : "لا يوجد حل صالح", "CALCULATED"],
+  ];
+  out.replaceChildren(renderRows(rows));
+  const w = document.createElement("div"); w.className = "warn";
+  w.textContent = "إذا ظهر حلان، اختر الأقرب إلى موقعك المعروف. قرب الاعتدالين تضعف دقة خط العرض.";
+  out.appendChild(w);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "name": "hisban",
+  "version": "0.1.0-mvp",
+  "private": true,
+  "description": "HISBAN Navigation MVP: Experimental / Research Prototype",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"**/*.test.js\" \"**/*.test.mjs\""
+  }
+}

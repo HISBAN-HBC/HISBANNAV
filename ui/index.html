@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حُسبان — واجهة المختبر (Mock/Replay)</title>
+<style>
+  body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f6f5f1; color: #1d1d1b; }
+  header { background: #20303d; color: #fff; padding: 12px 16px; }
+  #status { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .pill { background: #fff; color: #1d1d1b; border-radius: 8px; padding: 8px 12px; display: flex; gap: 8px; align-items: baseline; }
+  .pill .k { color: #666; font-size: 13px; }
+  main { padding: 16px; max-width: 980px; margin: 0 auto; }
+  #source { color: #555; font-size: 14px; margin: 8px 0; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 8px 0; }
+  button { font: inherit; padding: 8px 12px; border: 1px solid #20303d; background: #fff; border-radius: 6px; cursor: pointer; }
+  .tab.on { background: #20303d; color: #fff; }
+  #tabs { display: flex; gap: 6px; margin: 12px 0; flex-wrap: wrap; }
+  #panel { background: #fff; border-radius: 10px; padding: 16px; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 14px; }
+  th, td { border-bottom: 1px solid #e3e1da; padding: 6px 8px; text-align: right; }
+  .muted { color: #666; } .note { color: #555; font-size: 13px; } .warn { color: #8a4b00; background: #fff4e0; padding: 8px; border-radius: 6px; }
+  #error { color: #a11; min-height: 1em; }
+</style>
+</head>
+<body>
+<header>
+  <div>حُسبان — واجهة المختبر (بيانات Mock أو Replay فقط؛ لا حساسات حقيقية بعد)</div>
+  <div id="status"></div>
+</header>
+<main>
+  <div class="row" id="scenarios"></div>
+  <div class="row">
+    <label>أو أعد تشغيل جلسة محفوظة (JSON): <input type="file" id="file" accept="application/json,.json"></label>
+  </div>
+  <div id="source"></div>
+  <div id="error"></div>
+  <nav id="tabs"></nav>
+  <section id="panel"></section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

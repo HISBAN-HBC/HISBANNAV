@@ -1,0 +1,5 @@
+DESIGN=A N=5: 18 سيناريو في 75s
+DESIGN=A N=7: 22 سيناريو في 154s
+DESIGN=A N=9: 26 سيناريو في 266s
+DESIGN=B N=9: 26 سيناريو في 261s
+ALLDONE

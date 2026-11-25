@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حُسبان — تصويب الشمس (Android/Chrome)</title>
+<style>
+  body { font-family: system-ui, "Segoe UI", Tahoma, sans-serif; margin: 0; background: #f6f5f1; color: #1d1d1b; }
+  header { background: #20303d; color: #fff; padding: 12px 16px; font-size: 18px; }
+  main { padding: 16px; max-width: 640px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  button { font: inherit; padding: 12px 14px; border: 1px solid #20303d; background: #fff; border-radius: 8px; width: 100%; margin: 6px 0; font-size: 16px; }
+  button#measure { background: #20303d; color: #fff; }
+  button:disabled { opacity: 0.5; }
+  .warn { color: #8a4b00; background: #fff4e0; padding: 10px; border-radius: 8px; }
+  #status, #result, #outcome, #replayResult { font-size: 14px; line-height: 1.6; }
+  .small { color: #555; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>حُسبان — تصويب الشمس</header>
+<main>
+  <div class="card warn">
+    لا تنظر إلى الشمس بعينك. استخدم الشاشة فقط. وجّه الكاميرا الخلفية نحو الشمس، ثم اضغط «قياس» واثبت الهاتف ثانية واحدة.
+  </div>
+  <div class="card">
+    <button id="start" type="button">تشغيل الحساسات (يتطلب إذناً)</button>
+    <div id="status" class="small">لم تُشغَّل الحساسات بعد.</div>
+  </div>
+  <div class="card">
+    <button id="measure" type="button">قياس</button>
+    <div id="outcome"></div>
+    <div id="result"></div>
+  </div>
+  <div class="card">
+    <button id="truth" type="button">تعيين المرجع من GNSS</button>
+    <button id="download" type="button">تنزيل الجلسة (JSON)</button>
+    <label class="small">فحص إعادة التشغيل من ملف جلسة: <input id="replay" type="file" accept=".json,application/json"></label>
+    <div id="replayResult"></div>
+  </div>
+  <p class="small"><a href="calibration.html">معايرة اتجاه الكاميرا</a> (تُحفظ على هذا الجهاز قبل القياس).</p>
+</main>
+<script type="module" src="aim-app.js"></script>
+</body>
+</html>
