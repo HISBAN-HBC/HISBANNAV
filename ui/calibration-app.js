@@ -40,15 +40,42 @@ async function measure(which) {
   status();
 }
 
-$("start").addEventListener("click", () => { orientation.start(); status(); });
-$("nadir").addEventListener("click", () => measure("nadir"));
-$("zenith").addEventListener("click", () => measure("zenith"));
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
-$("save").addEventListener("click", () => {
-  if (!pending.nadir || !pending.zenith) {
-    $("outcome").textContent = "قِس الوضعين أولاً.";
+// يعرض عدًا تنازليًا قبل كل وضع، ليتسنى للمستخدم تغيير وضع الهاتف دون قلب يدوي متعجّل.
+async function countdown(seconds, prompt) {
+  for (let s = seconds; s > 0; s--) {
+    $("outcome").textContent = `${prompt} — ابدأ بعد ${s}…`;
+    await wait(1000);
+  }
+}
+
+// زر واحد: الوضع الأول، ثم عدّ تنازلي، ثم الوضع الثاني، ثم الحساب والحفظ تلقائيًا.
+async function runSequence() {
+  if (orientation.read().available === false) {
+    $("outcome").textContent = "الحساسات غير مفعّلة. اضغط «تشغيل الحساسات» أولًا.";
     return;
   }
+  pending.nadir = null;
+  pending.zenith = null;
+  $("sequence").disabled = true;
+  try {
+    await countdown(3, "ضع الهاتف مسطحًا، الكاميرا تنظر للأسفل");
+    await measure("nadir");
+    if (!pending.nadir) return;
+    await countdown(4, "ارفع الهاتف واقلبه، الكاميرا تنظر للأعلى");
+    await measure("zenith");
+    if (!pending.zenith) return;
+    saveNow();
+  } finally {
+    $("sequence").disabled = false;
+  }
+}
+
+$("start").addEventListener("click", () => { orientation.start(); status(); });
+$("sequence").addEventListener("click", runSequence);
+
+function saveNow() {
   const r = calibrate({
     nadirSamples: pending.nadir,
     zenithSamples: pending.zenith,
@@ -64,7 +91,7 @@ $("save").addEventListener("click", () => {
     `ارتفاع الوضع الأول ${r.record.nadirAltDeg.toFixed(1)}°، الثاني ${r.record.zenithAltDeg.toFixed(1)}°.` +
     (r.warnings.length ? ` ${r.warnings.join(" ")}` : "");
   showStored();
-});
+}
 
 setInterval(status, 500);
 showStored();
