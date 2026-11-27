@@ -32,7 +32,13 @@ async function measure(which) {
   await new Promise((r) => setTimeout(r, WINDOW_MS));
   const samples = orientation.samplesBetween(t0, Date.now());
   if (samples.length === 0) {
-    $("outcome").textContent = `لا عينات: ${orientation.read().reason ?? "تأكد من تشغيل الحساسات"}`;
+    // تشخيص: عمر آخر قراءة وصلت من الحساس، ليتبين هل توقف الحساس أم أن الطابع الزمني مختلف.
+    const last = orientation.read();
+    const ageMs = last.available ? Date.now() - Date.parse(last.timestampUtc) : null;
+    $("outcome").textContent = ageMs === null
+      ? `لا عينات: لم تصل أي قراءة من الحساس بعد (${last.reason ?? "تأكد من تشغيل الحساسات"}).`
+      : `لا عينات في نافذة القياس. آخر قراءة قبل ${Math.round(ageMs)} ms. ` +
+        (ageMs > 2000 ? "الحساس توقف عن الإرسال، أعد تشغيله." : "الطابع الزمني غير متطابق، أرسل هذه الرسالة للتحليل.");
     return;
   }
   pending[which] = samples;
